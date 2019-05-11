@@ -1,0 +1,173 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accounts | P2P Payments</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<link rel="stylesheet" href="css/menu.css">
+<link rel="stylesheet" href="css/toast.css">
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script src="js/uri.js"></script>
+<script src="js/commons.js"></script>
+<script>
+$(function() {
+	$(document).ready(function() {
+		getUserAccounts();
+	});
+});
+
+function getUserAccounts() {
+	clearAccountsTable();
+	$.ajax({
+		type: "GET",
+		url: uri["GET_USER_ACCOUNTS"],
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: true,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (response, status, xhr) {
+			buildAccountsTable(response);
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function setAutoDepositAccount(ele) {
+	$("#error").empty();
+	
+	var ok = confirm("Make '" + ele.getAttribute("acct-num") + "' default, Sure?");
+	if (!ok) {
+		return;
+	}
+	
+	var jsonReq = {};
+	var defaultAutoDepositAccountId = ele.getAttribute("token-id");
+	jsonReq.defaultAutoDepositAccountId = defaultAutoDepositAccountId;
+	console.log(jsonReq);
+	$.ajax({
+		type: "PUT",
+		url: uri["SET_AUTO_DEP_ACCT"],
+		data: JSON.stringify(jsonReq),
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: false,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (data, status, xhr) {
+			toast();
+			getUserAccounts();	
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function clearAccountsTable() {
+	var accountsTable = document.getElementById("accounts-table");
+	var rowCount = accountsTable.rows.length;
+	for (var i = 1; i < rowCount; i++) {
+		accountsTable.deleteRow(1);
+	}
+	$("#accounts-table").hide();
+}
+
+function buildAccountsTable(response) {
+	if (response == null || response.p2pAccount == null || response.p2pAccount.length == 0) {
+		$("#error").html("No accounts found");
+		return;
+	}
+	
+	$("#accounts-table").show();
+	var accounts = response.p2pAccount;
+	for(var i = 0; i < accounts.length; i++) {
+		var account = accounts[i];
+		var tokenId = account.p2pAccountId;
+		var isDefaultAccountHtml = account.isDefaultAutoDepositAccount ? "<i class='fa fa-check-circle' style='font-size:24px;color:green'></i>" : "<button class='btn default' onclick='setAutoDepositAccount(this)' acct-num='" + account.accountNumber + "' token-id='" + tokenId + "'>Set as Default</button>";
+		
+		var row = $('<tr algin=center>');
+		var td = "<td>" + (i + 1) + "</td>";
+		td += "<td>" + account.accountNumber + "</td>";
+		td += "<td>" + account.accountType + "</td>";
+		td += "<td align='center'>" + isDefaultAccountHtml + "</td>";
+		td += account.isTokenAutoDepositAccount ? "<td>&#10004;</td>" : "<td>&#10008;</td>";
+		row.append(td);
+		$("#accounts-table").append(row);
+	}
+}
+</script>
+<style>
+th {
+	color: #fff;
+}
+.btn {
+	border: none;
+	background-color: #eee;;
+	padding: 14px 28px;
+	font-size: 16px;
+	cursor: pointer;
+	display: inline-block;
+}
+
+.btn:hover {
+	background: RebeccaPurple;
+}
+</style>
+</head>
+<body>
+<center>
+	<h1 style="color: RebeccaPurple">Union Bank P2P Payments</h1>
+	<div style="width: 70%">
+		<!-- menu start -->
+		<ul>
+			<li><a href="welcome.html"><i class="fa fa-home"></i>Home</a></li>
+			<li class="dropdown">
+				<a href="javascript:void(0)" class="dropbtn"><i class="fa fa-user-o"></i>Profile</a>
+				<div class="dropdown-content">
+					<a href="list-emails.html"><i class="fa fa-envelope-o"></i>Manage Emails</a>
+					<a href="#"><i class="fa fa-mobile"></i>Manage Phones</a>
+				</div>
+			</li>
+			<li class="active"><a href="accounts.html"><i class="fa fa-credit-card"></i>Accounts</a></li>
+			<li><a href="list-contacts.html"><i class="fa fa-address-book-o"></i>Contacts</a></li>
+			<li><a href="#contact"><i class="fa fa-usd"></i>Send Money</a></li>
+			<li><a href="#contact"><i class="fa fa-usd"></i>Request Money</a></li>
+			<li><a href="#contact"><i class="fa fa-usd"></i>Split Money</a></li>
+			<li style="float:right"><a href="index.html"><i class="fa fa-sign-out"></i>Logout</a></li>
+		</ul>
+		<br>
+		<!-- menu end -->
+		
+		<div id="data">
+			<font size="4"><b>* Accounts *</b></font><br>
+			<hr color="RebeccaPurple" />
+			<span id="error" style="background-color: yellow;"></span>
+			<table id="accounts-table" width="100%">
+				<tr bgcolor="SlateBlue">
+					<th />
+					<th>Account Number</th>
+					<th>Account Type</th>
+					<th>Is Auto-Deposit?</th>
+					<th>Is Token Auto-Deposit?</th>
+				</tr>
+			</table>
+			<hr color="RebeccaPurple" />
+		</div>
+		
+		<span id="snackbar"><i class='fa fa-smile-o'></i>...Success...<i class='fa fa-smile-o'></i></span>
+	</div>
+</center>
+</body>
+</html>
