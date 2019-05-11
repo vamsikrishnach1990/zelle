@@ -1,0 +1,10 @@
+.badge {
+	height: 30px;
+	width: 30px;
+	display: table-cell;
+	text-align: center;
+	color: #fff;
+	vertical-align: middle;
+	border-radius: 50%;
+	background: RebeccaPurple;
+}
