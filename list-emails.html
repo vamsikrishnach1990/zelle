@@ -1,0 +1,354 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Emails | P2P Payments</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<link rel="stylesheet" href="css/menu.css">
+<link rel="stylesheet" href="css/toast.css">
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script src="js/uri.js"></script>
+<script src="js/commons.js"></script>
+<script>
+$(function() {
+	$(document).ready(function() {
+		getUserEmails();
+	});
+	$("#email-data").on("click", ".send-otp", function() {
+		sendOTPForEmail($(this));
+	});
+	$("#email-data").on("click", ".validate-otp", function() {
+		var otp = prompt("Enter OTP received", "000000");
+		if (otp == null || otp == "") {
+			alert("You cancelled...!");
+		} else {
+			validateOTPForEmail($(this), otp);
+		}
+	});
+	$("#email-data").on("click", ".delete-email", function() {
+		deleteUserEmail($(this));
+	});
+	$(document).on("click", ".create-email", function() {
+		var email = prompt("Enter email address", "");
+		if (email == null || email == "") {
+			alert("You cancelled...!");
+		} else {
+			createNewUserEmail(email);
+		}
+	});
+	$("#email-data").on("click", ".set-auto-deposit-acct", function() {
+		getUserAccounts($(this));
+	});
+	$("#set-auto-deposit-acct-btn").click(function() {
+		setAutoDepositAccount();
+	});
+	$("#dialog").dialog({
+		modal: true,
+		resizable: false,
+		autoOpen: false,
+		draggable: false
+	}).prev(".ui-dialog-titlebar").css("background", "RebeccaPurple");
+});
+
+function getUserEmails() {
+	clearEmailTable();
+	$.ajax({
+		type: "GET",
+		url: uri["GET_USER_EMAILS"],
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: true,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (data, status, xhr) {
+			buildEmailTable(data);
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function sendOTPForEmail(ele) {
+	var jsonReq = {};
+	jsonReq.p2pUserId = sessionStorage.getItem("ce-user-id");
+	$.ajax({
+		type: "POST",
+		url: uri["SEND_OTP_EMAIL"].replace("{emailToken}", ele.attr('token-id')),
+		data: JSON.stringify(jsonReq),
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: false,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (data, status, xhr) {
+			var otpInfo = data.OTPInfo;
+			var msg = "Resend Attempts Remaining: " + otpInfo.resendAttemptsRemainingCount;
+			msg += "\nValidation Attempts Remaining: " + otpInfo.validationAttemptsRemainingCount;
+			alert(msg);
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function validateOTPForEmail(ele, otp) {
+	var jsonReq = {};
+	jsonReq.validationCode = otp;
+	$.ajax({
+		type: "POST",
+		url: uri["VALIDATE_OTP_EMAIL"].replace("{emailToken}", ele.attr('token-id')),
+		data: JSON.stringify(jsonReq),
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: false,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (data, status, xhr) {
+			alert(data);
+			getUserEmails();
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function deleteUserEmail(ele) {
+	$.ajax({
+		type: "DELETE",
+		url: uri["DELETE_USER_EMAIL"].replace("{emailToken}", ele.attr('token-id')),
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: false,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (data, status, xhr) {
+			alert(data);
+			getUserEmails();
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function createNewUserEmail(mailaddress) {
+	var jsonReq = {};
+	var email = {};
+	email.email = mailaddress;
+	jsonReq.email = email;
+	console.log(JSON.stringify(jsonReq));
+	$.ajax({
+		type: "POST",
+		url: uri["CREATE_USER_EMAIL"],
+		data: JSON.stringify(jsonReq),
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: false,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (data, status, xhr) {
+			alert(status);
+			getUserEmails();
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function getUserAccounts(ele) {
+	$.ajax({
+		type: "GET",
+		url: uri["GET_USER_ACCOUNTS"],
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: true,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (response, status, xhr) {
+			$("#token-id-to-set-auto-deposit-acct").val(ele.attr('token-id'));
+			populateAccountsDropDown(response);
+			$("#dialog").dialog("open");
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function setAutoDepositAccount() {
+	$("#error").empty();
+	
+	var jsonReq = {};
+	var autoDepositSetup = {};
+	autoDepositSetup.p2pAccountId = $("#auto-deposit-acct-id").val();
+	autoDepositSetup.moveTokenFromPreviousBank = $("#move-token").is(":checked");
+	jsonReq.autoDepositSetup = autoDepositSetup;
+	$.ajax({
+		type: "PUT",
+		url: uri["SET_AUTO_DEP_ACCT_EMAIL"].replace("{emailToken}", $("#token-id-to-set-auto-deposit-acct").val()),
+		data: JSON.stringify(jsonReq),
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: false,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (data, status, xhr) {
+			$("#dialog").dialog("close");
+			toast();
+			getUserEmails();	
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#dialog").dialog("close");
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function clearEmailTable() {
+	var emailTable = document.getElementById("email-data");
+	var rowCount = emailTable.rows.length;
+	for (var i = 1; i < rowCount; i++) {
+		emailTable.deleteRow(1);
+	}
+	$("#email-data").hide();
+}
+
+function buildEmailTable(response) {
+	if (response == null || response.p2pEmail == null || response.p2pEmail.length == 0) {
+		$("#error").html("No emails found");
+		return;
+	}
+	
+	$("#email-data").show();
+	var emails = response.p2pEmail;
+	for(var i = 0; i < emails.length; i++) {
+		var email = emails[i];
+		var tokenId = email.emailToken;
+		var emailActivity = email.tokenActivity;
+		
+		var row = $('<tr>');
+		var td = "<td>" + (i + 1) + "</td>";
+		td += "<td>" + email.address + "</td>";
+		td += email.contactPointValidity == 1 ? "<td>&#10004;</td>" : "<td>&#10008;</td>";
+		td += email.contactPointValidity == 1 ? "<td>-</td>" : "<td><span title='Send OTP to email' class='send-otp' style='cursor: pointer;' token-id='" + tokenId + "'>&#9993;</span></td>";
+		td += email.contactPointValidity == 1 ? "<td>-</td>" : "<td><span title='enter otp received' class='validate-otp' style='cursor: pointer;' token-id='" + tokenId + "'><i class='fa fa-send-o'></i></td>";
+		td += emailActivity.autoDepositAccountId == null ? "<td><span title='link it with an account' class='set-auto-deposit-acct' style='cursor: pointer;' token-id='" + tokenId + "'><small><i class='fa fa-link'></i></small></span></td>"
+			: "<td>(<span title='link it with an account' class='set-auto-deposit-acct' style='cursor: pointer;' token-id='" + tokenId + "'><small><u>Change</u></small></span>) " + emailActivity.autoDepositAccountName + "</td>";
+		td += "<td><span title='delete this email' class='delete-email' style='cursor: pointer;' token-id='" + tokenId + "'><i class='fa fa-trash-o'></i></span></td>";
+		row.append(td);
+		$("#email-data").append(row);
+	}
+}
+
+function populateAccountsDropDown(response) {
+	if (response == null || response.p2pAccount == null || response.p2pAccount.length == 0) {
+		$("#error").html("No accounts found");
+		return;
+	}
+	
+	var userAccounts = $("#auto-deposit-acct-id");
+	userAccounts.empty();
+	userAccounts.append("<option selected='true' disabled='disabled'>Choose an account</option>");
+	var accounts = response.p2pAccount;
+	for (var i = 0; i < accounts.length; i++) {
+		var account = accounts[i];
+		if (account.accountStatus.indexOf("approved") !== -1) {
+			userAccounts.append("<option value='" + account.p2pAccountId + "'>" + account.accountNumber + " - " + account.accountType + "</option>");
+		}
+	}
+}
+</script>
+<style>
+th {
+	color: #fff;
+}
+
+.ui-dialog-title {
+	color: #fff;
+}
+</style>
+</head>
+<body>
+<center>
+	<h1 style="color: RebeccaPurple">Union Bank P2P Payments</h1>
+	<div style="width: 70%">
+		<!-- menu start -->
+		<ul>
+			<li><a href="welcome.html"><i class="fa fa-home"></i>Home</a></li>
+			<li class="dropdown active">
+				<a href="javascript:void(0)" class="dropbtn"><i class="fa fa-user-o"></i>Profile</a>
+				<div class="dropdown-content">
+					<a href="list-emails.html"><i class="fa fa-envelope-o"></i>Manage Emails</a>
+					<a href="#"><i class="fa fa-mobile"></i>Manage Phones</a>
+				</div>
+			</li>
+			<li><a href="accounts.html"><i class="fa fa-credit-card"></i>Accounts</a></li>
+			<li><a href="list-contacts.html"><i class="fa fa-address-book-o"></i>Contacts</a></li>
+			<li><a href="#contact"><i class="fa fa-usd"></i>Send Money</a></li>
+			<li><a href="#contact"><i class="fa fa-usd"></i>Request Money</a></li>
+			<li><a href="#contact"><i class="fa fa-usd"></i>Split Money</a></li>
+			<li style="float:right"><a href="index.html"><i class="fa fa-sign-out"></i>Logout</a></li>
+		</ul>
+		<br>
+		<!-- menu end -->
+		
+		<div id="data">
+			<font size="4"><b>* Manage Emails *</b></font><br>
+			<hr color="RebeccaPurple" />
+			<span id="error" style="background-color: yellow;"></span>
+			<table id="email-data" width="100%">
+				<tr bgcolor="SlateBlue">
+					<th />
+					<th>Address</th>
+					<th>Validated</th>
+					<th>Send OTP</th>
+					<th>Validate OTP</th>
+					<th>Auto-Deposit Account</th>
+					<th />
+				</tr>
+			</table>
+			<hr color="RebeccaPurple" />
+			<span class="create-email" style="cursor: pointer; float: left"><i class="fa fa-plus-square" style="color:green"></i>&nbsp;&nbsp;Register new Email address</span>
+		</div>
+		
+		<div id="dialog" title="Set Auto Deposit Account">
+			<input type="hidden" id="token-id-to-set-auto-deposit-acct" />
+			<table>
+				<tr><td><select id="auto-deposit-acct-id" /></td></tr>
+				<tr><td><input type="checkbox" id="move-token">Move token from other Bank</input></td></tr>
+				<tr><td><input type="button" id="set-auto-deposit-acct-btn" value="Set"></td></tr>
+			</table>
+		</div>	
+		<span id="snackbar"><i class='fa fa-smile-o'></i>...Success...<i class='fa fa-smile-o'></i></span>
+	</div>
+</center>
+</body>
+</html>
