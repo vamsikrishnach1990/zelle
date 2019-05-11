@@ -1,0 +1,346 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contacts | P2P Payments</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<link rel="stylesheet" href="css/common.css">
+<link rel="stylesheet" href="css/menu.css">
+<link rel="stylesheet" href="css/toast.css">
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script src="js/uri.js"></script>
+<script src="js/commons.js"></script>
+<script>
+$(function() {
+	$(document).ready(function() {
+		getUserContacts();
+	});
+	$("#contacts-table").on("click", ".add-email", function() {
+		var email = prompt("Enter email address to add", "");
+		if (email == null || email == "") {
+			alert("You cancelled...!");
+		} else {
+			addEmailToAContact($(this), email);;
+		}
+	});
+	$("#contacts-table").on("click", ".edit-email", function() {
+		console.log($(this).attr("token-id"));
+		console.log($(this).attr("contact-id"));
+		
+		var email = prompt("Enter email address to edit", $(this).attr("email-id"));
+		if (email == null || email == "") {
+			alert("You cancelled...!");
+		} else {
+			editEmailOfAContact($(this), email);;
+		}
+	});
+	
+});
+var cacheResponse = {};
+function update() {
+	$("#contacts-table tr").css("background-color", function(index) {
+		return index%2==0 ? "#eeeeee" : "#ffffff";
+	});
+}
+
+function getUserContacts() {
+	clearContactsTable();
+	$.ajax({
+		type: "GET",
+		url: uri["GET_CONTACTS"],
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: true,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (response, status, xhr) {
+			console.log(response);
+			buildContactsTable2(response);
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function addEmailToAContact(ele, email) {
+	$("#error").empty();
+	
+	var jsonReq = {};
+	var p2pContact = {};
+	var cacheData = cacheResponse[ele.attr("contact-id")];
+	p2pContact.contactId = ele.attr("contact-id");
+	p2pContact.firstName = cacheData.firstName;
+	p2pContact.lastName = cacheData.lastName;
+	p2pContact.emailPaymentTokens = [];
+	
+	var emailObject = {};
+	emailObject.address = email;
+	
+	p2pContact.emailPaymentTokens.push(emailObject);
+	jsonReq.p2pContact = p2pContact;
+	console.log(JSON.stringify(jsonReq));
+	$.ajax({
+		type: "PATCH",
+		url: uri["UPDATE_CONTACT"].replace("{contactId}", ele.attr("contact-id")),
+		data: JSON.stringify(jsonReq),
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: false,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (data, status, xhr) {
+			toast();
+			getUserContacts();	
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function editEmailOfAContact(ele, email) {
+	$("#error").empty();
+	
+	var jsonReq = {};
+	var p2pContact = {};
+	var cacheData = cacheResponse[ele.attr("contact-id")];
+	p2pContact.contactId = ele.attr("contact-id");
+	p2pContact.firstName = cacheData.firstName;
+	p2pContact.lastName = cacheData.lastName;
+	p2pContact.emailPaymentTokens = [];
+	
+	var emailObject = {};
+	emailObject.paymentTokenId = ele.attr("token-id");
+	emailObject.address = email;
+	
+	p2pContact.emailPaymentTokens.push(emailObject);
+	jsonReq.p2pContact = p2pContact;
+	console.log(JSON.stringify(jsonReq));
+	$.ajax({
+		type: "PATCH",
+		url: uri["UPDATE_CONTACT"].replace("{contactId}", ele.attr("contact-id")),
+		data: JSON.stringify(jsonReq),
+		crossDomain: true,
+		dataType: "json",
+		headers: getHeaders(),
+		contentType: "application/json",
+		cache: false,
+		beforeSend: function (xhrRequest) {
+			/*xhrRequest.*/
+		},
+		success: function (data, status, xhr) {
+			toast();
+			getUserContacts();	
+		},
+		error: function (xhr, textStatus, errorThrown) {
+			$("#error").html(buildErrorMsg(xhr.responseJSON));
+		}
+	});
+}
+
+function clearContactsTable() {
+	var contactsTable = document.getElementById("contacts-table");
+	var rowCount = contactsTable.rows.length;
+	for (var i = 0; i < rowCount; i++) {
+		contactsTable.deleteRow(0);
+	}
+	$("#contacts-table").hide();
+}
+
+function buildContactsTable(response) {
+	if (response == null || response.p2pContacts == null || response.p2pContacts.p2pContact == null || response.p2pContacts.p2pContact.length == 0) {
+		$("#error").html("No accounts found");
+		return;
+	}
+	
+	$("#contacts-table").show();
+	var contacts = response.p2pContacts.p2pContact;
+	for(var i = 0; i < contacts.length; i++) {
+		var contact = contacts[i];
+		var contactId = contact.contactId;
+		var badge = contact.firstName.charAt(0).toUpperCase() + contact.lastName.charAt(0).toUpperCase();
+		
+		
+		var row = $('<tr>');
+		var td = "<td width=5%><span class='badge'>" + badge + "</span></td>";
+		td += "<td>" + contact.firstName + " " + contact.lastName + "</td>";
+		row.append(td);
+		$("#contacts-table").append(row);
+		
+		if (contact.nickname != null) {
+			var row2 = $('<tr>');
+			var td2 = "<td />"
+			td2 += "<td>" + contact.nickname + "</td>";
+			row2.append(td2);
+			$("#contacts-table").append(row2);
+		}
+		
+		if (contact.emailPaymentTokens != null && contact.emailPaymentTokens.length > 0) {
+			for (var emailPaymentToken in contact.emailPaymentTokens) {
+				console.log(emailPaymentToken);
+			}
+		}
+		
+		var row3 = $('<tr>');
+		var td3 = "<td /><td><span class='add-email' style='cursor: pointer; float: left'><i class='fa fa-plus-square' style='color: green'></i>&nbsp;&nbsp;Add new email id</span></td>";
+		row3.append(td3);
+		$("#contacts-table").append(row3);
+		
+		if (contact.phonePaymentTokens != null && contact.phonePaymentTokens.length > 0) {
+			var phoneRow = $('<tr>');
+			var phoneData = "<td>";
+			var tempTable = "<table>"
+			for (var index in contact.phonePaymentTokens) {
+				if (index == 0) {
+					tempTable += "<tr><td><i class='fa fa-mobile' style='font-size:36px'></i></td><td>"+contact.phonePaymentTokens[index].number+"</td></tr>";
+				} else {
+					tempTable += "<tr><td /><td>"+contact.phonePaymentTokens[index].number+"</td></tr>";
+				}
+			}
+			tempTable += "</table>";
+			phoneRow.append("<td /><td>" + tempTable + "</td>");
+			$("#contacts-table").append(phoneRow);
+		}
+		
+		var row4 = $('<tr>');
+		var td4 = "<td /><td><span class='add-phone' style='cursor: pointer; float: left'><i class='fa fa-plus-square' style='color: green'></i>&nbsp;&nbsp;Add new phone number</span></td>";
+		row4.append(td4);
+		$("#contacts-table").append(row4);
+	}
+	update();
+}
+
+
+function buildContactsTable2(response) {
+	if (response == null || response.p2pContacts == null || response.p2pContacts.p2pContact == null || response.p2pContacts.p2pContact.length == 0) {
+		$("#error").html("No accounts found");
+		return;
+	}
+	
+	$("#contacts-table").show();
+	var contacts = response.p2pContacts.p2pContact;
+	for(var i = 0; i < contacts.length; i++) {
+		var contact = contacts[i];
+		var contactId = contact.contactId;
+		var badge = contact.firstName.charAt(0).toUpperCase() + contact.lastName.charAt(0).toUpperCase();
+		saveIntoCache(contact);
+		
+		var row = $('<tr>');
+		var td = "<td width=5% valign='top'><span class='badge'>" + badge + "</span></td>";
+		td += "<td>" + contact.firstName + " " + contact.lastName + "<br>";
+		
+		if (contact.nickname != null) {
+			td += contact.nickname + "<br>";
+		}
+		
+		var emailsExists = false;
+		if (contact.emailPaymentTokens != null && contact.emailPaymentTokens.length > 0) {
+			emailsExists = true;
+			for (var index in contact.emailPaymentTokens) {
+				var emailInfo = contact.emailPaymentTokens[index];
+				td += "<i class='fa fa-envelope-o'></i>&nbsp;&nbsp;&nbsp;&nbsp;" + emailInfo.address + "&nbsp;&nbsp;&nbsp;&nbsp;";
+				td += "<span class='edit-email' style='cursor: pointer;' contact-id='"+contactId+"' token-id='"+emailInfo.paymentTokenId+"' email-id='"+emailInfo.address+"'><i class='fa fa-edit'></i></span>";
+				td += "&nbsp;&nbsp;<span class='add-email' style='cursor: pointer;' contact-id='"+contactId+"'><i class='fa fa-plus-square' style='color: green'></i></span><br>";
+			}
+		}
+		
+		if (!emailsExists) {
+			td += "<span class='add-email' style='cursor: pointer; float: left' contact-id='"+contactId+"'><i class='fa fa-plus-square' style='color: green'></i>&nbsp;&nbsp;Add new email id</span><br>";
+		}
+		
+		var phonesExists = false;
+		if (contact.phonePaymentTokens != null && contact.phonePaymentTokens.length > 0) {
+			phonesExists = true;
+			for (var index in contact.phonePaymentTokens) {
+				var phoneInfo = contact.phonePaymentTokens[index];
+				td += "<i class='fa fa-mobile' style='font-size:24px'></i>&nbsp;&nbsp;&nbsp;&nbsp;" + phoneInfo.number + "&nbsp;&nbsp;&nbsp;&nbsp;";
+				td += "<span class='edit-phone' style='cursor: pointer;' contact-id='"+contactId+"' token-id='"+phoneInfo.phoneTokenId+"'><i class='fa fa-edit'></i></span>";
+				td += "&nbsp;&nbsp;<span class='add-phone' style='cursor: pointer;' contact-id='"+contactId+"'><i class='fa fa-plus-square' style='color: green'></i></span><br>";
+			}
+		}
+		
+		if (!phonesExists) {
+			td += "<span class='add-phone' style='cursor: pointer; float: left' contact-id='"+contactId+"'><i class='fa fa-plus-square' style='color: green'></i>&nbsp;&nbsp;Add new phone number</span></td>";
+		}	
+		
+		row.append(td);
+		$("#contacts-table").append(row);
+	}
+	update();
+}
+
+function saveIntoCache(contact) {
+	var key = contact.contactId;
+	var value = {};
+	value.firstName = contact.firstName;
+	value.lastName = contact.lastName;
+	cacheResponse[key] = value;
+}
+</script>
+<style>
+th {
+	color: #fff;
+}
+.btn {
+	border: none;
+	background-color: #eee;;
+	padding: 14px 28px;
+	font-size: 16px;
+	cursor: pointer;
+	display: inline-block;
+}
+
+.btn:hover {
+	background: RebeccaPurple;
+}
+</style>
+</head>
+<body>
+<center>
+	<h1 style="color: RebeccaPurple">Union Bank P2P Payments</h1>
+	<div style="width: 70%">
+		<!-- menu start -->
+		<ul>
+			<li><a href="welcome.html"><i class="fa fa-home"></i>Home</a></li>
+			<li class="dropdown">
+				<a href="javascript:void(0)" class="dropbtn"><i class="fa fa-user-o"></i>Profile</a>
+				<div class="dropdown-content">
+					<a href="list-emails.html"><i class="fa fa-envelope-o"></i>Manage Emails</a>
+					<a href="#"><i class="fa fa-mobile"></i>Manage Phones</a>
+				</div>
+			</li>
+			<li><a href="accounts.html"><i class="fa fa-credit-card"></i>Accounts</a></li>
+			<li class="active"><a href="list-contacts.html"><i class="fa fa-address-book-o"></i>Contacts</a></li>
+			<li><a href="#contact"><i class="fa fa-usd"></i>Send Money</a></li>
+			<li><a href="#contact"><i class="fa fa-usd"></i>Request Money</a></li>
+			<li><a href="#contact"><i class="fa fa-usd"></i>Split Money</a></li>
+			<li style="float:right"><a href="index.html"><i class="fa fa-sign-out"></i>Logout</a></li>
+		</ul>
+		<br>
+		<!-- menu end -->
+		
+		<div id="data">
+			<span style="float: left"><font size="4"><b><i class="fa fa-address-book-o"></i>  Contacts</b></font><br></span>
+			<br>
+			<hr color="RebeccaPurple" />
+			<span id="error" style="background-color: yellow;"></span>
+			<table id="contacts-table" width="100%">
+			</table>
+			<hr color="RebeccaPurple" />
+		</div>
+		
+		<span id="snackbar"><i class='fa fa-smile-o'></i>...Success...<i class='fa fa-smile-o'></i></span>
+	</div>
+</center>
+</body>
+</html>
